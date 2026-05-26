@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  username     String       @unique
+  passwordHash String?
+  role         Role         @default(USER)
+  enabled      Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  predictions  Prediction[]
+}
+
+model Match {
+  id          String       @id @default(cuid())
+  externalId  String?      @unique
+  stage       String
+  matchday    Int?
+  homeTeam    String
+  awayTeam    String
+  startsAt    DateTime
+  status      MatchStatus  @default(SCHEDULED)
+  homeScore   Int?
+  awayScore   Int?
+  updatedAt   DateTime     @updatedAt
+  predictions Prediction[]
+
+  @@index([startsAt])
+  @@index([stage])
+}
+
+model Prediction {
+  id            String   @id @default(cuid())
+  userId        String
+  matchId       String
+  homeScore     Int
+  awayScore     Int
+  points        Int      @default(0)
+  exactHit      Boolean  @default(false)
+  outcomeHit    Boolean  @default(false)
+  lockedAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match         Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+  @@index([matchId])
+}
+
+model Standing {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  username       String
+  totalPoints    Int      @default(0)
+  exactHits      Int      @default(0)
+  outcomeHits    Int      @default(0)
+  predictions    Int      @default(0)
+  lastUpdatedAt  DateTime @default(now())
+}
